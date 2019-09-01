@@ -1,0 +1,11 @@
+image: k8s-custom-hpa
+tag: latest
+imagePullPolicy: Never
+environment: []
+config:
+  apps:
+    - name: hello-world
+      maxReplicas: 5
+      minReplicas: 1
+      scaleFactor: 2
+      query: up
