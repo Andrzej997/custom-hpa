@@ -4,6 +4,7 @@ import (
 	"custom-hpa/util"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"os"
 	"path/filepath"
@@ -11,10 +12,14 @@ import (
 
 func main() {
 
-	kubeconfig := filepath.Join(os.Getenv("USERPROFILE"), ".kube", "config")
-	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
+	config, err := rest.InClusterConfig()
 	if err != nil {
-		panic(err.Error())
+		kubeconfig := filepath.Join(os.Getenv("USERPROFILE"), ".kube", "config")
+		err = nil
+		config, err = clientcmd.BuildConfigFromFlags("", kubeconfig)
+		if err != nil {
+			panic(err.Error())
+		}
 	}
 
 	// create the clientset

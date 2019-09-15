@@ -1,15 +1,19 @@
-FROM golang:latest
+FROM golang:latest as builder
 
-WORKDIR /go/src/github.com/ashiddo11/k8s-custom-hpa/
+ADD https://github.com/golang/dep/releases/download/v0.5.4/dep-linux-amd64 /usr/bin/dep
 
-RUN go get gopkg.in/yaml.v2  k8s.io/client-go/... 
+RUN chmod +x /usr/bin/dep
 
-COPY .  .
+WORKDIR $GOPATH/src/custom-hpa
 
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o custom-hpa .
+COPY Gopkg.toml Gopkg.lock ./
+
+RUN dep ensure --vendor-only
+
+COPY . ./
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix nocgo -o /custom-hpa .
+
 
 FROM scratch
-
-COPY --from=0 /go/src/github.com/ashiddo11/k8s-custom-hpa/custom-hpa /
-
-CMD ["/custom-hpa"]
+COPY --from=builder /custom-hpa ./
+ENTRYPOINT ["./custom-hpa"]

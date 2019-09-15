@@ -5,46 +5,14 @@ metadata:
     app: {{ .Release.Name }}
   name: {{ .Release.Name }}
 spec:
-  strategy:
-    rollingUpdate:
-      maxUnavailable: {{ .Values.maxUnavailable }}
   replicas: {{ .Values.replicas }}
-  revisionHistoryLimit: {{ .Values.revisionHistoryLimit }}
-  selector:
-    matchLabels:
-      app: {{ .Release.Name }}
   template:
     metadata:
-      {{- if .Values.pod_annotations }}
-      annotations:
-        {{- range $key, $value := .Values.pod_annotations }}
-        {{ $key }}: {{ $value }} {{ end }}{{ end }}
       labels:
         app: {{ .Release.Name }}
       name: {{ .Release.Name }}
     spec:
-      restartPolicy: Always
-      {{- if .Values.nodeselector }}
-      nodeSelector:
-        vpc: {{ .Values.nodeselector }}{{ end }}
       containers:
-      - image: "{{ .Values.image }}:{{ .Values.tag }}"
-        imagePullPolicy: {{ .Values.imagePullPolicy }}
-        name: {{ .Release.Name }}
-        env:
-          {{- range $key, $val := .Values.environment }}
-          - name: {{ $key }}
-            value: {{ $val | quote }} {{ end }}
-        volumeMounts:
-        - mountPath: /config
+        - image: "{{ .Values.image }}:{{ .Values.tag }}"
+          imagePullPolicy: {{ .Values.imagePullPolicy }}
           name: {{ .Release.Name }}
-{{- if .Values.readinessProbe }}
-        readinessProbe:
-{{ toYaml .Values.readinessProbe | indent 12 }}{{- end }}
-{{- if .Values.resources }}
-        resources:
-{{ toYaml .Values.resources | indent 12 }}{{- end }}
-      volumes:
-        - name: {{ .Release.Name }}
-          configMap:
-            name: {{ .Release.Name }}

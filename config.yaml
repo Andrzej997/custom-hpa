@@ -1,6 +1,0 @@
-apps:
-  - name: hello-world
-    maxReplicas: 5
-    minReplicas: 1
-    query: up
-    scaleFactor: 2
