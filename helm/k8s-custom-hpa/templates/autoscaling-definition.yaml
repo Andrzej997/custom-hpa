@@ -1,0 +1,144 @@
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  name: autoscalingdefinitions.scaling.com
+spec:
+  group: scaling.com
+  versions:
+    - name: v1
+      served: true
+      storage: true
+  scope: Namespaced
+  names:
+    plural: autoscalingdefinitions
+    singular: autoscalingdefinition
+    kind: AutoscalingDefinition
+    shortnames:
+      - ad
+      - adef
+  preserveUnknownFields: false
+  version: v1
+  validation:
+    openAPIV3Schema:
+      type: object
+      properties:
+        apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation
+            of an object. Servers should convert recognized schemas to the latest
+            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#resources'
+          type: string
+        kind:
+          description: 'Kind is a string value representing the REST resource this
+            object represents. Servers may infer this from the endpoint the client
+            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#types-kinds'
+          type: string
+        spec:
+          description: "AutoscalingDefinition specification"
+          type: object
+          properties:
+            scaleTarget:
+              description: "Autoscaling target definition"
+              type: object
+              properties: 
+                matchNamespace:
+                  description: "Name of namespace, where to look for deployment or pod. Default value is default"
+                  type: string
+                labelName:
+                  description: "Name of label. Required"
+                  type: string
+                matchLabel:
+                  description: "Value of label. Required"
+                  type: string
+                targetType:
+                  description: "Type of target. Valid values are: deployment, replicaset"
+                  type: string
+                  enum:
+                    - "deployment"
+                    - "replicaset"
+              required:
+                - labelName
+                - matchLabel
+            minReplicas:
+              description: "Minimum number of replicas of replicaset/deployment. Default is 1"
+              type: integer
+              minimum: 0
+            maxReplicas:
+              description: "Maximum number of replicas of replicaset/deployment. Default is unlimited"
+              type: integer
+              minimum: 0
+            scalingStep:
+              description: "Scaling factor - scaling step"
+              type: integer
+              minimum: 1
+            intervalBetweenAutoscaling:
+              description: "The wait interval between successful autoscaling processes"
+              type: string
+            metrics:
+              description: "Metrics definition array. When multiple values are set then any of them can cause autoscaling."
+              type: array
+              items:
+                type: object
+                properties:
+                  name:
+                    description: "Name of metric"
+                    type: string
+                  metricType:
+                    description: "Type of metrics. For now only prometheus metrics are supported"
+                    type: string
+                    enum:
+                     - "prometheus"
+                  prometheusPath:
+                    description: "Path to prometheus server"
+                    type: string
+                  prometheusQuery:
+                    description: "Prometheus query"
+                    type: string
+                  scaleDownValue:
+                    description: "Lower bound of scaling"
+                    type: string
+                  scaleUpValue:
+                    description: "Upper bound of scaling"
+                    type: string
+                  scaleValueType:
+                    description: "Metric type"
+                    type: string
+                    enum:
+                     - "string"
+                     - "integer"
+                     - "double"
+                     - "boolean"
+                     - "time"
+                  numOfTests:
+                    description: "Number of tests before triggering autoscaling. I.e. when set to 5 then 3 of 5 tests exceeding upper bound can cause autoscaling"
+                    type: integer
+                    minimum: 1
+                  algorithm:
+                    description: "Test condition alogrithm, select between: mean, median, trimmedmean"
+                    type: string
+                    enum:
+                     - "mean"
+                     - "median"
+                     - "trimmedmean"
+                  trimmedPercentage:
+                    description: "Percentage of trimmed mean algorithm"
+                    type: integer
+                  percentageOfTestConditionFulfillment:
+                    description: "Percentage of condition fulfilled as part of the test, in usage only when algorithm is not set"
+                    type: integer
+                    minimum: 0
+                    maximum: 100
+                  scrapeInterval:
+                    description: "Metrics scrape interval. Valid units are: ms, s, m"
+                    type: string
+                  testInterval:
+                    description: "Interval between metric evaluation tests. Valid units are: ms, s, m"
+                    type: string
+                required:
+                - name
+                - metricType
+                - scaleDownValue
+                - scaleUpValue
+                - scaleValueType
+          required:
+            - scaleTarget
+            - metrics

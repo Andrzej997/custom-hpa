@@ -1,0 +1,27 @@
+﻿apiVersion: "scaling.com/v1"
+kind: AutoscalingDefinition
+metadata:
+  name: image-service-autoscaling-definition
+spec:
+  scaleTarget:
+    matchNamespace: "default"
+    labelName: "app.kubernetes.io/name"
+    matchLabel: "image-service"
+    targetType: "deployment"
+  minReplicas: 1
+  maxReplicas: 5
+  intervalBetweenAutoscaling: "2m"
+  scalingStep: 1
+  metrics:
+    - name: "cpu"
+      metricType: "prometheus"
+      prometheusPath: "http://prometheus:9090"
+      prometheusQuery: "sum(rate (container_cpu_usage_seconds_total{pod_name=~\"image-service.*$\"}[2m]))/sum(kube_pod_container_resource_limits_cpu_cores{pod=~\"image-service.*$\"})"
+      scaleDownValue: "0.25"
+      scaleUpValue: "0.75"
+      scaleValueType: "double"
+      numOfTests: 3
+      algorithm: "trimmedmean"
+      trimmedPercentage: 10
+      scrapeInterval: "1s"
+      testInterval: "30s"
