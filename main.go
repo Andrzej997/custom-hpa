@@ -1,7 +1,8 @@
 package main
 
 import (
-	"custom-hpa/util"
+	"custom-hpa/autoscaler"
+	"custom-hpa/clients"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
@@ -29,11 +30,11 @@ func main() {
 	}
 
 	Scheme := scheme.Scheme
-	_ = util.AddToScheme(Scheme)
+	_ = clients.AddToScheme(Scheme)
 
-	client, err := util.NewForConfig(config, Scheme)
+	client, err := clients.NewForConfig(config, Scheme)
 	if err != nil {
 		panic(err.Error())
 	}
-	util.MainAutoscalingLoop(client, clientset)
+	autoscaler.MainAutoscalingLoop(client, clientset)
 }

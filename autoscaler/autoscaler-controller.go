@@ -1,6 +1,8 @@
-package util
+package autoscaler
 
 import (
+	"custom-hpa/clients"
+	"custom-hpa/metrics"
 	"custom-hpa/model"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -22,7 +24,7 @@ type DefinitionChannel struct {
 
 type MetricChannels struct {
 	metric                        model.AutoscalingDefinitionMetric
-	testResultsChannel            chan TestResult
+	testResultsChannel            chan metrics.TestResult
 	scrapeInterval                chan bool
 	testInterval                  chan bool
 	autoscaleEvaluation           chan AutoscaleEvaluation
@@ -31,11 +33,11 @@ type MetricChannels struct {
 	clearChannel                  chan bool
 }
 
-func MainAutoscalingLoop(client *Client, extensionsClient *kubernetes.Clientset) {
-	var definitions []model.AutoscalingDefinition
+func MainAutoscalingLoop(client *clients.Client, extensionsClient *kubernetes.Clientset) {
+	var newDefinitions []model.AutoscalingDefinition
 	var channels []DefinitionChannel
 	for {
-		oldDefinitions := definitions
+		oldDefinitions := newDefinitions
 		def, err := client.AutoscalerDefinitions("default").List(meta_v1.ListOptions{})
 		if err != nil {
 			log.Printf("Error %s", err.Error())
@@ -44,8 +46,8 @@ func MainAutoscalingLoop(client *Client, extensionsClient *kubernetes.Clientset)
 		if def == nil {
 			continue
 		}
-		definitions = def.Items
-		changes := detectDefinitionChanges(definitions, oldDefinitions)
+		newDefinitions = def.Items
+		changes := detectDefinitionChanges(newDefinitions, oldDefinitions)
 
 		if changes.definitionsToAdd != nil {
 			addedChannels := addDefinitions(changes.definitionsToAdd, extensionsClient)
@@ -78,11 +80,17 @@ func addDefinitions(definitions []model.AutoscalingDefinition, client *kubernete
 			clearMetricBufferChannel:       make(chan model.AutoscalingDefinitionMetric),
 		}
 		for i, metric := range definition.Spec.Metrics {
-			testResultsChannel, err := MakeTest(metric)
+			scrapeResultChannel, err := metrics.MakeScrape(metric)
+			if err != nil {
+				log.Printf("Scrape error: %s", err.Error())
+				continue
+			}
+			testResultsChannel, err := metrics.MakeTest(metric, scrapeResultChannel)
 			if err != nil {
 				log.Printf("Test error: %s", err.Error())
 				continue
 			}
+
 			autoscaleEvaluationResult := EvaluateAutoscaling(testResultsChannel, metric)
 			channel.metricChannels[i] = MetricChannels{
 				metric:                        metric,
@@ -108,7 +116,7 @@ func rewriteToConcreteClearBufferChannel(clearMetricBufferChannel chan model.Aut
 			select {
 			case metric := <-clearMetricBufferChannel:
 				for _, mc := range metricChannels {
-					if mc.metric == metric {
+					if &mc.metric == &metric {
 						mc.clearChannel <- true
 					}
 				}
@@ -135,6 +143,7 @@ func rewriteToMainChannel(autoscaleEvaluationResult AutoscaleEvaluationResult, m
 func removeDefinitions(definitions []model.AutoscalingDefinition, channels []DefinitionChannel) []DefinitionChannel {
 	var result []DefinitionChannel
 	for _, def := range definitions {
+		log.Printf("Removing definition for: %s", def.Spec.ScaleTarget.MatchLabel)
 		var channel *DefinitionChannel
 		for _, ch := range channels {
 			if &def == &ch.definition {

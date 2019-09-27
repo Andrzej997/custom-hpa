@@ -34,19 +34,25 @@ type AutoscalingDefinitionScaleTarget struct {
 }
 
 type AutoscalingDefinitionMetric struct {
-	Name                                 string `json:"name"`
-	MetricType                           string `json:"metricType"`
-	PrometheusPath                       string `json:"prometheusPath"`
-	PrometheusQuery                      string `json:"prometheusQuery"`
-	ScaleDownValue                       string `json:"scaleDownValue"`
-	ScaleUpValue                         string `json:"scaleUpValue"`
-	ScaleValueType                       string `json:"scaleValueType"`
-	NumOfTests                           int    `json:"numOfTests"`
-	Algorithm                            string `json:"algorithm"`
-	TrimmedPercentage                    int    `json:"trimmedPercentage"`
-	PercentageOfTestConditionFulfillment int    `json:"percentageOfTestConditionFulfillment"`
-	ScrapeInterval                       string `json:"scrapeInterval"`
-	TestInterval                         string `json:"testInterval"`
+	Name                                 string   `json:"name"`
+	MetricType                           string   `json:"metricType"`
+	PrometheusPath                       string   `json:"prometheusPath"`
+	PrometheusQuery                      string   `json:"prometheusQuery"`
+	ScaleDownValue                       string   `json:"scaleDownValue"`
+	ScaleUpValue                         string   `json:"scaleUpValue"`
+	ScaleValueType                       string   `json:"scaleValueType"`
+	NumOfTests                           int      `json:"numOfTests"`
+	Algorithm                            string   `json:"algorithm"`
+	TrimmedPercentage                    int      `json:"trimmedPercentage"`
+	PercentageOfTestConditionFulfillment int      `json:"percentageOfTestConditionFulfillment"`
+	ScrapeInterval                       string   `json:"scrapeInterval"`
+	TestInterval                         string   `json:"testInterval"`
+	AutoregresionDegree                  int      `json:"autoregresionDegree"`
+	AutoregressionCoefficients           []string `json:"autoregressionCoefficients"`
+	MovingAverageDegree                  int      `json:"movingAverageDegree"`
+	MovingAverageCoefficients            []string `json:"movingAverageCoefficients"`
+	ExogenousRegressorQuery              string   `json:"exogenousRegressorQuery"`
+	ExogenousRegressorCoefficient        string   `json:"exogenousRegressorCoefficient"`
 }
 
 type AutoscalingDefinitionList struct {
@@ -131,4 +137,10 @@ func (in *AutoscalingDefinitionMetric) DeepCopyInto(out *AutoscalingDefinitionMe
 	out.PercentageOfTestConditionFulfillment = in.PercentageOfTestConditionFulfillment
 	out.ScrapeInterval = in.ScrapeInterval
 	out.TestInterval = in.TestInterval
+	out.AutoregresionDegree = in.AutoregresionDegree
+	out.AutoregressionCoefficients = in.AutoregressionCoefficients
+	out.MovingAverageDegree = in.MovingAverageDegree
+	out.MovingAverageCoefficients = in.MovingAverageCoefficients
+	out.ExogenousRegressorQuery = in.ExogenousRegressorQuery
+	out.ExogenousRegressorCoefficient = in.ExogenousRegressorCoefficient
 }
