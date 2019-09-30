@@ -60,16 +60,24 @@ func EvaluateAutoscalingPredictive(
 }
 
 func calculatePredictedMetricValue(metric model.AutoscalingDefinitionMetric, resultBuffer *ring.Ring, predictionBuffer *ring.Ring) *ring.Ring {
+	exogenousRegressorMaxValue, err := strconv.ParseFloat(metric.ExogenousRegressorMaxValue, 64)
+	if err != nil {
+		log.Printf("Float conversion error - autregressionCoefficients: %s", err.Error())
+		panic(err)
+	}
 	inputMetric, err := metrics.ScrapeMetric(metric, metric.ExogenousRegressorQuery)
 	if err != nil || !inputMetric.IsMetricValid {
+		scalar := model2.Scalar{
+			Value:     model2.SampleValue(exogenousRegressorMaxValue),
+			Timestamp: 0,
+		}
 		inputMetric = struct {
 			LowerBoundPassed bool
 			UpperBoundPassed bool
 			MetricName       string
 			IsMetricValid    bool
 			Value            []model2.Value
-		}{LowerBoundPassed: false, UpperBoundPassed: false, MetricName: metric.Name, IsMetricValid: true, Value: nil}
-		// TODO set max value
+		}{LowerBoundPassed: false, UpperBoundPassed: false, MetricName: metric.Name, IsMetricValid: true, Value: []model2.Value{&scalar}}
 	}
 	resultBufferPtr := resultBuffer
 	ad := metric.AutoregresionDegree
@@ -133,6 +141,9 @@ func calculatePredictedMetricValue(metric model.AutoscalingDefinitionMetric, res
 				inputValueSum += float64(value.Value)
 			}
 		}
+	}
+	if inputValueSum > exogenousRegressorMaxValue {
+		inputValueSum = exogenousRegressorMaxValue
 	}
 	exogenousRegressorCoefficient, err := strconv.ParseFloat(metric.ExogenousRegressorCoefficient, 64)
 	if err != nil {

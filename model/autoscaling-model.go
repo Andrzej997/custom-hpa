@@ -53,6 +53,7 @@ type AutoscalingDefinitionMetric struct {
 	MovingAverageCoefficients            []string `json:"movingAverageCoefficients"`
 	ExogenousRegressorQuery              string   `json:"exogenousRegressorQuery"`
 	ExogenousRegressorCoefficient        string   `json:"exogenousRegressorCoefficient"`
+	ExogenousRegressorMaxValue           string   `json:"exogenousRegressorMaxValue"`
 }
 
 type AutoscalingDefinitionList struct {
@@ -143,4 +144,5 @@ func (in *AutoscalingDefinitionMetric) DeepCopyInto(out *AutoscalingDefinitionMe
 	out.MovingAverageCoefficients = in.MovingAverageCoefficients
 	out.ExogenousRegressorQuery = in.ExogenousRegressorQuery
 	out.ExogenousRegressorCoefficient = in.ExogenousRegressorCoefficient
+	out.ExogenousRegressorMaxValue = in.ExogenousRegressorMaxValue
 }
