@@ -13,10 +13,6 @@ spec:
     plural: autoscalingdefinitions
     singular: autoscalingdefinition
     kind: AutoscalingDefinition
-    shortnames:
-      - ad
-      - adef
-  preserveUnknownFields: false
   version: v1
   validation:
     openAPIV3Schema:
@@ -39,7 +35,7 @@ spec:
             scaleTarget:
               description: "Autoscaling target definition"
               type: object
-              properties: 
+              properties:
                 matchNamespace:
                   description: "Name of namespace, where to look for deployment or pod. Default value is default"
                   type: string
@@ -82,11 +78,14 @@ spec:
                   name:
                     description: "Name of metric"
                     type: string
+                  type:
+                    description: "Type of autoscaler"
+                    type: string
                   metricType:
                     description: "Type of metrics. For now only prometheus metrics are supported"
                     type: string
                     enum:
-                     - "prometheus"
+                      - "prometheus"
                   prometheusPath:
                     description: "Path to prometheus server"
                     type: string
@@ -103,11 +102,11 @@ spec:
                     description: "Metric type"
                     type: string
                     enum:
-                     - "string"
-                     - "integer"
-                     - "double"
-                     - "boolean"
-                     - "time"
+                      - "string"
+                      - "integer"
+                      - "double"
+                      - "boolean"
+                      - "time"
                   numOfTests:
                     description: "Number of tests before triggering autoscaling. I.e. when set to 5 then 3 of 5 tests exceeding upper bound can cause autoscaling"
                     type: integer
@@ -116,9 +115,10 @@ spec:
                     description: "Test condition alogrithm, select between: mean, median, trimmedmean"
                     type: string
                     enum:
-                     - "mean"
-                     - "median"
-                     - "trimmedmean"
+                      - "mean"
+                      - "median"
+                      - "trimmedmean"
+                      - "arimax"
                   trimmedPercentage:
                     description: "Percentage of trimmed mean algorithm"
                     type: integer
@@ -133,12 +133,39 @@ spec:
                   testInterval:
                     description: "Interval between metric evaluation tests. Valid units are: ms, s, m"
                     type: string
+                  autoregresionDegree:
+                    description: "Degree of autoregression polynomial in arimax algorithm"
+                    type: integer
+                    minimum: 1
+                  autoregressionCoefficients:
+                    description: "Coefficients of autoregression polynomial in arimax alogirthm"
+                    type: array
+                    items:
+                      type: string
+                  movingAverageDegree:
+                    description: "Degree of moving average ploynomial in arimax algorithm"
+                    type: integer
+                    minimum: 0
+                  movingAverageCoefficients:
+                    description: "Coefficients of moving average polynomial in arimax algorithm"
+                    type: array
+                    items:
+                      type: string
+                  exogenousRegressorQuery:
+                    description: "Prometheus query to get single exogenous regressor value"
+                    type: string
+                  exogenousRegressorCoefficient:
+                    description: "Coefficient for exogenous regressor"
+                    type: string
+                  exogenousRegressorMaxValue:
+                    description: "Exogenous regressor maximal value, every unknown and greather value will be reduced to this value"
+                    type: string
                 required:
-                - name
-                - metricType
-                - scaleDownValue
-                - scaleUpValue
-                - scaleValueType
+                  - name
+                  - metricType
+                  - scaleDownValue
+                  - scaleUpValue
+                  - scaleValueType
           required:
             - scaleTarget
             - metrics

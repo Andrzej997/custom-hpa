@@ -16,12 +16,20 @@ spec:
     - name: "cpu"
       metricType: "prometheus"
       prometheusPath: "http://prometheus:9090"
-      prometheusQuery: "sum(rate (container_cpu_usage_seconds_total{pod_name=~\"image-service.*$\"}[2m]))/sum(kube_pod_container_resource_limits_cpu_cores{pod=~\"image-service.*$\"})"
-      scaleDownValue: "0.25"
-      scaleUpValue: "0.75"
+      prometheusQuery: "rate(container_cpu_usage_seconds_total{namespace=\"default\", container=\"image-service\"}[2m])"
+      scaleDownValue: "0.33"
+      scaleUpValue: "0.74"
       scaleValueType: "double"
       numOfTests: 3
-      algorithm: "trimmedmean"
+      algorithm: "arimax"
       trimmedPercentage: 10
       scrapeInterval: "1s"
-      testInterval: "30s"
+      testInterval: "1m"
+      autoregresionDegree: 2
+      autoregressionCoefficients: ["1", "-1"]
+      movingAverageDegree: 1
+      movingAverageCoefficients: ["2"]
+      exogenousRegressorQuery: "increase(http_server_requests_seconds_count{namespace=\"default\", container=\"image-service\", uri=\"/noauth/images/top20\"}[2s])"
+      exogenousRegressorCoefficient: "0.5"
+      exogenousRegressorMaxValue: "30.0"
+
