@@ -8,7 +8,6 @@ import (
 	"log"
 	"math"
 	"strconv"
-	"time"
 )
 
 func EvaluateAutoscalingPredictive(
