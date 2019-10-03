@@ -7,6 +7,7 @@ import (
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"log"
+	"strings"
 	"time"
 )
 
@@ -23,14 +24,16 @@ type DefinitionChannel struct {
 }
 
 type MetricChannels struct {
-	metric                        model.AutoscalingDefinitionMetric
-	testResultsChannel            chan metrics.TestResult
-	scrapeInterval                chan bool
-	testInterval                  chan bool
-	autoscaleEvaluation           chan AutoscaleEvaluation
-	closeEvaluationProcessChannel chan bool
-	closeRewriteChannel           chan bool
-	clearChannel                  chan bool
+	metric                          model.AutoscalingDefinitionMetric
+	testResultsChannel              chan metrics.TestResult
+	scrapeInterval                  chan bool
+	testInterval                    chan bool
+	autoscaleEvaluation             chan AutoscaleEvaluation
+	closeEvaluationProcessChannel   chan bool
+	closeRewriteChannel             chan bool
+	clearChannel                    chan bool
+	exogenousRegressorResultChannel chan ExogenousRegressorScrapeResult
+	exogenousScrapeInterval         chan bool
 }
 
 func MainAutoscalingLoop(client *clients.Client, extensionsClient *kubernetes.Clientset) {
@@ -90,17 +93,27 @@ func addDefinitions(definitions []model.AutoscalingDefinition, client *kubernete
 				log.Printf("Test error: %s", err.Error())
 				continue
 			}
+			exogenousRegressorResultChannel := ExogenousRegressorResultChannel{}
+			if strings.ToUpper(metric.Algorithm) == "ARIMAX" {
+				exogenousRegressorResultChannel, err = CollectExogenousMetrics(metric)
+				if err != nil {
+					log.Printf("Test error: %s", err.Error())
+					continue
+				}
+			}
 
-			autoscaleEvaluationResult := EvaluateAutoscaling(testResultsChannel, metric)
+			autoscaleEvaluationResult := EvaluateAutoscaling(testResultsChannel, exogenousRegressorResultChannel.exogenousRegressorResultChannel, metric)
 			channel.metricChannels[i] = MetricChannels{
-				metric:                        metric,
-				testResultsChannel:            testResultsChannel.TestResultsChannel,
-				scrapeInterval:                testResultsChannel.ScrapeInterval,
-				testInterval:                  testResultsChannel.TestInterval,
-				autoscaleEvaluation:           autoscaleEvaluationResult.AutoscaleEvaluation,
-				closeEvaluationProcessChannel: autoscaleEvaluationResult.CloseEvaluationProcessChannel,
-				closeRewriteChannel:           rewriteToMainChannel(autoscaleEvaluationResult, channel.mainAutoscaleEvaluationChannel),
-				clearChannel:                  autoscaleEvaluationResult.ClearBufferChannel,
+				metric:                          metric,
+				testResultsChannel:              testResultsChannel.TestResultsChannel,
+				scrapeInterval:                  testResultsChannel.ScrapeInterval,
+				testInterval:                    testResultsChannel.TestInterval,
+				autoscaleEvaluation:             autoscaleEvaluationResult.AutoscaleEvaluation,
+				closeEvaluationProcessChannel:   autoscaleEvaluationResult.CloseEvaluationProcessChannel,
+				closeRewriteChannel:             rewriteToMainChannel(autoscaleEvaluationResult, channel.mainAutoscaleEvaluationChannel),
+				clearChannel:                    autoscaleEvaluationResult.ClearBufferChannel,
+				exogenousRegressorResultChannel: exogenousRegressorResultChannel.exogenousRegressorResultChannel,
+				exogenousScrapeInterval:         exogenousRegressorResultChannel.scrapeInterval,
 			}
 		}
 		result = append(result, channel)
@@ -152,12 +165,30 @@ func removeDefinitions(definitions []model.AutoscalingDefinition, channels []Def
 		}
 		if channel != nil {
 			for _, mc := range channel.metricChannels {
-				mc.scrapeInterval <- true
-				mc.testInterval <- true
-				mc.closeEvaluationProcessChannel <- true
-				mc.closeRewriteChannel <- true
-				close(mc.autoscaleEvaluation)
-				close(mc.testResultsChannel)
+				if mc.scrapeInterval != nil {
+					mc.scrapeInterval <- true
+				}
+				if mc.testInterval != nil {
+					mc.testInterval <- true
+				}
+				if mc.closeEvaluationProcessChannel != nil {
+					mc.closeEvaluationProcessChannel <- true
+				}
+				if mc.closeRewriteChannel != nil {
+					mc.closeRewriteChannel <- true
+				}
+				if mc.exogenousScrapeInterval != nil {
+					mc.exogenousScrapeInterval <- true
+				}
+				if mc.autoscaleEvaluation != nil {
+					close(mc.autoscaleEvaluation)
+				}
+				if mc.testResultsChannel != nil {
+					close(mc.testResultsChannel)
+				}
+				if mc.exogenousRegressorResultChannel != nil {
+					close(mc.exogenousRegressorResultChannel)
+				}
 			}
 			result = append(result, *channel)
 		}

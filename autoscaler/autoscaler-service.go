@@ -25,10 +25,11 @@ type AutoscaleEvaluation struct {
 }
 
 func EvaluateAutoscaling(resultChannel metrics.TestResultsChannel,
+	exogenousRegressorResultChannel chan ExogenousRegressorScrapeResult,
 	metric model.AutoscalingDefinitionMetric) AutoscaleEvaluationResult {
 	switch strings.ToUpper(metric.Algorithm) {
 	case "ARIMAX":
-		return EvaluateAutoscalingPredictive(resultChannel, metric)
+		return EvaluateAutoscalingPredictive(resultChannel, exogenousRegressorResultChannel, metric)
 	default:
 		return EvaluateAutoscalingReactive(resultChannel, metric)
 	}

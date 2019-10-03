@@ -171,7 +171,9 @@ func (c *ValueScalar) validateIntegerBounds(scaleDownValue string, scaleUpValue 
 	}
 	value := float64(c.Value)
 	intValue := int64(value)
-	result := MetricValidateResult{}
+	result := MetricValidateResult{
+		IsMetricValid: true,
+	}
 	if intValue <= downValue {
 		result.LowerBoundPassed = true
 	}
@@ -191,7 +193,9 @@ func (c *ValueScalar) validateDoubleBounds(scaleDownValue string, scaleUpValue s
 		return MetricValidateResult{}, err
 	}
 	value := float64(c.Value)
-	result := MetricValidateResult{}
+	result := MetricValidateResult{
+		IsMetricValid: true,
+	}
 	if value <= downValue {
 		result.LowerBoundPassed = true
 	}
@@ -204,6 +208,7 @@ func (c *ValueScalar) validateDoubleBounds(scaleDownValue string, scaleUpValue s
 func (c *ValueScalar) validateBooleanBounds() (MetricValidateResult, error) {
 	value := float64(c.Value)
 	result := MetricValidateResult{
+		IsMetricValid:    true,
 		LowerBoundPassed: false,
 		UpperBoundPassed: false,
 	}
@@ -227,7 +232,9 @@ func (c *ValueScalar) validateTimeBounds(scaleDownValue string, scaleUpValue str
 		return MetricValidateResult{}, err
 	}
 
-	result := MetricValidateResult{}
+	result := MetricValidateResult{
+		IsMetricValid: true,
+	}
 	if refTime.After(upTime) {
 		result.UpperBoundPassed = true
 	}

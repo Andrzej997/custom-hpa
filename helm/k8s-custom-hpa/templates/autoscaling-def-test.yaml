@@ -29,7 +29,7 @@ spec:
       autoregressionCoefficients: ["1", "-1"]
       movingAverageDegree: 1
       movingAverageCoefficients: ["2"]
-      exogenousRegressorQuery: "increase(http_server_requests_seconds_count{namespace=\"default\", container=\"image-service\", uri=\"/noauth/images/top20\"}[2s])"
+      exogenousRegressorQuery: "sum(increase(http_server_requests_seconds_count{uri=\"/noauth/images/top20\", component=\"image-service\"}[2s])) by (component, job, uri)"
       exogenousRegressorCoefficient: "0.5"
       exogenousRegressorMaxValue: "30.0"
 

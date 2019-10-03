@@ -49,7 +49,7 @@ func ScrapeMetrics(metric model.AutoscalingDefinitionMetric, testDuration time.D
 	scrapedMetricsChannel = make(chan []MetricValidateResult)
 
 	scrapeInterval = util.SetInterval(func() {
-		result, err := ScrapeMetric(metric, metric.PrometheusQuery)
+		result, err := ScrapeMetric(metric)
 		if err != nil || !result.IsMetricValid {
 			return
 		}
@@ -65,9 +65,9 @@ func ScrapeMetrics(metric model.AutoscalingDefinitionMetric, testDuration time.D
 	return
 }
 
-func ScrapeMetric(metric model.AutoscalingDefinitionMetric, query string) (MetricValidateResult, error) {
+func ScrapeMetric(metric model.AutoscalingDefinitionMetric) (MetricValidateResult, error) {
 	var result MetricValidateResult
-	value, err := readMetric(metric.PrometheusPath, query)
+	value, err := ReadMetric(metric.PrometheusPath, metric.PrometheusQuery)
 	if err != nil {
 		log.Printf("Error: %s", err.Error())
 		result = MetricValidateResult{IsMetricValid: false, MetricName: metric.Name}
@@ -83,7 +83,7 @@ func ScrapeMetric(metric model.AutoscalingDefinitionMetric, query string) (Metri
 	return result, nil
 }
 
-func readMetric(PrometheusPath string, PrometheusQuery string) (model2.Value, error) {
+func ReadMetric(PrometheusPath string, PrometheusQuery string) (model2.Value, error) {
 	if len(PrometheusPath) <= 0 || len(PrometheusQuery) <= 0 {
 		return nil, errors.New("prometheus query or path should not be null")
 	}

@@ -4,7 +4,6 @@ import (
 	"container/ring"
 	"custom-hpa/metrics"
 	"custom-hpa/model"
-	model2 "github.com/prometheus/common/model"
 	"log"
 	"math"
 	"strconv"
@@ -12,6 +11,7 @@ import (
 
 func EvaluateAutoscalingPredictive(
 	resultChannel metrics.TestResultsChannel,
+	exogenousRegressorResultChannel chan ExogenousRegressorScrapeResult,
 	metric model.AutoscalingDefinitionMetric) AutoscaleEvaluationResult {
 
 	autoscaleEvaluationChannel := make(chan AutoscaleEvaluation)
@@ -39,7 +39,10 @@ func EvaluateAutoscalingPredictive(
 			case testResult := <-resultChannel.TestResultsChannel:
 				resultBuffer.Value = testResult
 				resultBuffer = resultBuffer.Next()
-				predictionBuffer = calculatePredictedMetricValue(metric, resultBuffer, predictionBuffer)
+				exogenousRegressor := <-exogenousRegressorResultChannel
+				if exogenousRegressor.IsValid {
+					predictionBuffer = calculatePredictedMetricValue(metric, resultBuffer, predictionBuffer, exogenousRegressor.Value)
+				}
 				ae := checkBufferPredictive(resultBuffer, predictionBuffer, requiredPositiveTests, metric.NumOfTests)
 				ae.Metric = metric
 				autoscaleEvaluationChannel <- ae
@@ -58,26 +61,7 @@ func EvaluateAutoscalingPredictive(
 	}
 }
 
-func calculatePredictedMetricValue(metric model.AutoscalingDefinitionMetric, resultBuffer *ring.Ring, predictionBuffer *ring.Ring) *ring.Ring {
-	exogenousRegressorMaxValue, err := strconv.ParseFloat(metric.ExogenousRegressorMaxValue, 64)
-	if err != nil {
-		log.Printf("Float conversion error - autregressionCoefficients: %s", err.Error())
-		panic(err)
-	}
-	inputMetric, err := metrics.ScrapeMetric(metric, metric.ExogenousRegressorQuery)
-	if err != nil || !inputMetric.IsMetricValid {
-		scalar := model2.Scalar{
-			Value:     model2.SampleValue(exogenousRegressorMaxValue),
-			Timestamp: 0,
-		}
-		inputMetric = struct {
-			LowerBoundPassed bool
-			UpperBoundPassed bool
-			MetricName       string
-			IsMetricValid    bool
-			Value            []model2.Value
-		}{LowerBoundPassed: false, UpperBoundPassed: false, MetricName: metric.Name, IsMetricValid: true, Value: []model2.Value{&scalar}}
-	}
+func calculatePredictedMetricValue(metric model.AutoscalingDefinitionMetric, resultBuffer *ring.Ring, predictionBuffer *ring.Ring, exogenousRegressor float64) *ring.Ring {
 	resultBufferPtr := resultBuffer
 	ad := metric.AutoregresionDegree
 	if bufferFulfillmentDegree(resultBufferPtr) < ad {
@@ -131,24 +115,11 @@ func calculatePredictedMetricValue(metric model.AutoscalingDefinitionMetric, res
 	}
 
 	// Exogenous variable
-	inputValueSum := 0.0
-	for _, value := range inputMetric.Value {
-		switch value.Type() {
-		case model2.ValScalar:
-			var value, ok = value.(*model2.Scalar)
-			if ok {
-				inputValueSum += float64(value.Value)
-			}
-		}
-	}
-	if inputValueSum > exogenousRegressorMaxValue {
-		inputValueSum = exogenousRegressorMaxValue
-	}
 	exogenousRegressorCoefficient, err := strconv.ParseFloat(metric.ExogenousRegressorCoefficient, 64)
 	if err != nil {
 		return predictionBuffer
 	}
-	predictedValue += exogenousRegressorCoefficient * inputValueSum
+	predictedValue += exogenousRegressorCoefficient * exogenousRegressor
 
 	// result validation
 	lower, upper := metrics.TestSingleValueBounds(metric, predictedValue)
@@ -172,7 +143,7 @@ func checkBufferPredictive(buffer *ring.Ring, predictionBuffer *ring.Ring, requi
 	var scaleDownCounter = 0
 	var bufferPtr = buffer
 
-	if predictionBuffer.Prev().Value == nil {
+	if predictionBuffer.Prev().Value == nil { // if prediction buffer not filled then make reactive autoscaling process
 		return checkBuffer(buffer, requiredPositiveTests)
 	}
 	predictedTestResult := predictionBuffer.Prev().Value.(metrics.TestResult)
