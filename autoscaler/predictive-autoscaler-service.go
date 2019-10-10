@@ -39,6 +39,7 @@ func EvaluateAutoscalingPredictive(
 			case testResult := <-resultChannel.TestResultsChannel:
 				resultBuffer.Value = testResult
 				resultBuffer = resultBuffer.Next()
+				validatePredictedValue(testResult, predictionBuffer)
 				exogenousRegressor := <-exogenousRegressorResultChannel
 				if exogenousRegressor.IsValid {
 					predictionBuffer = calculatePredictedMetricValue(metric, resultBuffer, predictionBuffer, exogenousRegressor.Value)
@@ -110,7 +111,7 @@ func calculatePredictedMetricValue(metric model.AutoscalingDefinitionMetric, res
 				predictionValue = predictionValueResult.(metrics.TestResult).Value
 			}
 			noiseValue := testResult.Value - predictionValue
-			predictedValue = movingAverageCoeffitient * noiseValue
+			predictedValue += movingAverageCoeffitient * noiseValue
 		}
 	}
 
@@ -129,6 +130,7 @@ func calculatePredictedMetricValue(metric model.AutoscalingDefinitionMetric, res
 		MetricName:           metric.Name,
 		Value:                predictedValue,
 	}
+	log.Printf("Predicted value: %f ", predictedValue)
 	return predictionBuffer.Next()
 }
 
@@ -177,4 +179,14 @@ func checkBufferPredictive(buffer *ring.Ring, predictionBuffer *ring.Ring, requi
 		result.ScaleUp = true
 	}
 	return result
+}
+
+func validatePredictedValue(testResult metrics.TestResult, predictionBuffer *ring.Ring) {
+	if predictionBuffer.Prev().Value == nil {
+		return
+	}
+	predictedTestResult := predictionBuffer.Prev().Value.(metrics.TestResult)
+	diff := testResult.Value - predictedTestResult.Value
+	mse := math.Pow((testResult.Value - predictedTestResult.Value), 2.0)
+	log.Printf(" Predicted value diff: %f , MSE: %f", diff, mse)
 }

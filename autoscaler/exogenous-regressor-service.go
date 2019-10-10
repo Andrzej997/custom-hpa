@@ -63,17 +63,21 @@ func ScrapeExogenousMetrics(metric model.AutoscalingDefinitionMetric, testDurati
 	scrapeInterval = util.SetInterval(func() {
 		result, err := scrapeMetric(metric)
 		scrapesCounter++
-		if err != nil || !result.IsMetricValid {
-			return
+		if err == nil && result.IsMetricValid {
+			scrapedMetrics.ScrapedList = append(scrapedMetrics.ScrapedList, result)
 		}
-		scrapedMetrics.ScrapedList = append(scrapedMetrics.ScrapedList, result)
 		if scrapesCounter >= maxNumOfScrapes {
 			scrapesCounter = 0
 			if int((maxNumOfScrapes+1)/2) > len(scrapedMetrics.ScrapedList) {
+				exogenousRegressorMaxValue, err := strconv.ParseFloat(metric.ExogenousRegressorMaxValue, 64)
+				if err != nil {
+					log.Printf("Float conversion error - autoregressionCoefficients: %s", err.Error())
+					panic(err)
+				}
 				exogenousRegressorResultChannel <- ExogenousRegressorScrapeResult{
 					Name:    metric.Name,
-					Value:   0,
-					IsValid: false,
+					Value:   exogenousRegressorMaxValue,
+					IsValid: true,
 				}
 			}
 			scrapeValuesRobustMean := calculateScrapeValuesRobustMean(scrapedMetrics.ScrapedList, metric)
@@ -188,7 +192,7 @@ func calculateScrapeValuesRobustMean(scrapeList []ScrapedMetricItem, metric mode
 
 	exogenousRegressorMaxValue, err := strconv.ParseFloat(metric.ExogenousRegressorMaxValue, 64)
 	if err != nil {
-		log.Printf("Float conversion error - autregressionCoefficients: %s", err.Error())
+		log.Printf("Float conversion error - autoregressionCoefficients: %s", err.Error())
 		panic(err)
 	}
 

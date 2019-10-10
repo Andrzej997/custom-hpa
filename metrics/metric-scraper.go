@@ -50,11 +50,10 @@ func ScrapeMetrics(metric model.AutoscalingDefinitionMetric, testDuration time.D
 
 	scrapeInterval = util.SetInterval(func() {
 		result, err := ScrapeMetric(metric)
-		if err != nil || !result.IsMetricValid {
-			return
+		if err == nil && result.IsMetricValid {
+			scrapedMetrics.ScrapedList = append(scrapedMetrics.ScrapedList, result)
 		}
 		scrapesCounter++
-		scrapedMetrics.ScrapedList = append(scrapedMetrics.ScrapedList, result)
 		if scrapesCounter >= maxNumOfScrapes {
 			scrapesCounter = 0
 			scrapedMetricsChannel <- scrapedMetrics.ScrapedList
