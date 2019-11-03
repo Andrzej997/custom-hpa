@@ -15,7 +15,7 @@ spec:
   metrics:
     - name: "cpu"
       metricType: "prometheus"
-      prometheusPath: "http://localhost:31421"
+      prometheusPath: "http://prometheus:9090"
       prometheusQuery: "rate(container_cpu_usage_seconds_total{namespace=\"default\", container=\"image-service\"}[2m])"
       scaleDownValue: "0.33"
       scaleUpValue: "0.74"
