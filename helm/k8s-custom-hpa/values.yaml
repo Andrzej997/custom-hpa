@@ -1,5 +1,5 @@
 image: mateuszsojka/custom-hpa
-tag: latest
+tag: 1.1.0
 imagePullPolicy: Always
 environment: []
 replicas: 1

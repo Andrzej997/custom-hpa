@@ -1,0 +1,34 @@
+﻿apiVersion: "scaling.com/v1"
+kind: AutoscalingDefinition
+metadata:
+  name: image-service-autoscaling-definition
+spec:
+  scaleTarget:
+    matchNamespace: "default"
+    labelName: "app.kubernetes.io/name"
+    matchLabel: "image-service"
+    targetType: "deployment"
+  minReplicas: 1
+  maxReplicas: 5
+  intervalBetweenAutoscaling: "2m"
+  scalingStep: 1
+  metrics:
+    - name: "cpu"
+      metricType: "prometheus"
+      prometheusPath: "http://prometheus:9090"
+      prometheusQuery: "rate(container_cpu_usage_seconds_total{namespace=\"default\", container=\"image-service\"}[2m])"
+      scaleDownValue: "0.33"
+      scaleUpValue: "0.74"
+      scaleValueType: "double"
+      numOfTests: 3
+      algorithm: "arimax"
+      trimmedPercentage: 10
+      scrapeInterval: "1s"
+      testInterval: "1m"
+      autoregresionDegree: 2
+      autoregressionCoefficients: ["0.9142621", "-0.0839285"]
+      movingAverageDegree: 1
+      movingAverageCoefficients: ["0.8743175"]
+      exogenousRegressorQuery: "sum(increase(http_server_requests_seconds_count{uri=\"/noauth/images/top20\", component=\"image-service\"}[2s])) by (component, job, uri)"
+      exogenousRegressorCoefficient: "-0.002959416"
+      exogenousRegressorMaxValue: "26.0"
